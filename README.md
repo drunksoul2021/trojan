@@ -24,6 +24,21 @@ trojan多用户管理部署程序
 ## 安装方式
 *trojan使用请提前准备好服务器可用的域名*  
 
+docker版本有问题，先安装docker再执行下面的一件脚本安装命令，可以跳过docker安装。
+# 方法1：使用官方安装脚本
+curl -fsSL https://get.docker.com | sh
+
+# 方法2：如果是 CentOS/RHEL
+yum install -y docker
+systemctl start docker
+systemctl enable docker
+
+# 方法3：如果是 Ubuntu/Debian
+apt-get update
+apt-get install -y docker.io
+systemctl start docker
+systemctl enable docker
+
 ###  a. 一键脚本安装
 ```
 #安装/更新
