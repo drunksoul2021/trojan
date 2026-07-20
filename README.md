@@ -34,10 +34,10 @@ systemctl start docker
 systemctl enable docker
 
 # 方法3：如果是 Ubuntu/Debian
-apt-get update
-apt-get install -y docker.io
-systemctl start docker
-systemctl enable docker
+sudo apt-get update -qq && \
+sudo apt-get install -y docker.io && \
+sudo systemctl start docker && \
+sudo systemctl enable docker
 
 ###  a. 一键脚本安装
 ```
