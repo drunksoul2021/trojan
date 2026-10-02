@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 umask 077
-home=${TROJAN_MANAGER_HOME:-/usr/local/lib/trojan-manager}
+manager_home=${TROJAN_MANAGER_HOME:-/usr/local/lib/trojan-manager}
 config=${TROJAN_CONFIG_PATH:-/usr/local/etc/trojan/config.json}
 acme_home=${TROJAN_ACME_HOME:-/root/.acme.sh}
 domain=""; email=""; mode=alpn
@@ -13,20 +13,22 @@ while (($#)); do
         *) echo "证书参数不支持: $1" >&2; exit 1 ;;
     esac
 done
-python3 - "$domain" "$home" <<'PY'
+python3 - "$domain" "$manager_home" <<'PY'
 import sys
 sys.path.insert(0,sys.argv[2]+"/scripts")
 from configure import valid_domain
 valid_domain(sys.argv[1])
 PY
 mkdir -p "$acme_home"
-install -m 700 "$home/acme.sh/acme.sh" "$acme_home/acme.sh"
-hook="$home/scripts/cert-hook.sh"
+install -m 700 "$manager_home/acme.sh/acme.sh" "$acme_home/acme.sh"
+hook="$manager_home/scripts/cert-hook.sh"
 pre="bash $hook pre"; post="bash $hook post"; challenge_port=443
 if [[ "$mode" == standalone ]]; then
     pre="/usr/bin/systemctl stop trojan-web.service"
     post="/usr/bin/systemctl start trojan-web.service"
     challenge_port=80
+    touch "$manager_home/acme-http.enabled"
+    bash "$manager_home/scripts/firewall.sh"
 fi
 opts=()
 if [[ -n "$email" ]]; then opts+=(--accountemail "$email"); fi
@@ -50,7 +52,7 @@ if [[ $issue_status != 0 && $issue_status != 2 ]]; then
 fi
 source_cert="$acme_home/${domain}_ecc/fullchain.cer"
 source_key="$acme_home/${domain}_ecc/$domain.key"
-python3 "$home/scripts/configure.py" validate-cert "$source_cert" "$source_key" "$domain"
+python3 "$manager_home/scripts/configure.py" validate-cert "$source_cert" "$source_key" "$domain"
 cert_dir="$(dirname "$config")/certs"
 mkdir -p "$cert_dir"; chmod 700 "$cert_dir"
 touch /run/trojan-certificate-installing
@@ -58,7 +60,7 @@ trap 'rm -f /run/trojan-certificate-installing' EXIT
 bash "$acme_home/acme.sh" --install-cert -d "$domain" --ecc \
     --key-file "$cert_dir/private.key" --fullchain-file "$cert_dir/fullchain.pem" \
     --reloadcmd "bash $hook reload"
-python3 "$home/scripts/configure.py" tls "$config" "$cert_dir/fullchain.pem" "$cert_dir/private.key" "$domain"
+python3 "$manager_home/scripts/configure.py" tls "$config" "$cert_dir/fullchain.pem" "$cert_dir/private.key" "$domain"
 chmod 600 "$cert_dir/private.key"
 rm -f /run/trojan-certificate-installing
 cat > /etc/cron.d/trojan-cert-renew <<EOF

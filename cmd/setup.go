@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"os"
+	"regexp"
 	"time"
 	"trojan/core"
 )
@@ -19,8 +20,15 @@ func setupManager() error {
 	}
 	admin, _ := core.GetValue("admin_pass")
 	password := os.Getenv("TROJAN_ADMIN_PASSWORD")
-	if admin == "" && len(password) < 12 {
-		return fmt.Errorf("首次初始化请设置至少 12 位 TROJAN_ADMIN_PASSWORD")
+	username := os.Getenv("TROJAN_ADMIN_USER")
+	if username == "" {
+		username = "admin"
+	}
+	if !regexp.MustCompile(`^[A-Za-z0-9_.-]{1,64}$`).MatchString(username) {
+		return fmt.Errorf("管理员用户名只允许 1 至 64 位字母、数字、下划线、点和横线")
+	}
+	if admin == "" && len(password) < 6 {
+		return fmt.Errorf("首次初始化请设置至少 6 位 TROJAN_ADMIN_PASSWORD")
 	}
 	db := config.Mysql.GetDB()
 	if db == nil {
@@ -41,6 +49,9 @@ func setupManager() error {
 		return err
 	}
 	if admin == "" {
+		if err = core.SetValue("admin_user", username); err != nil {
+			return err
+		}
 		hash := sha256.Sum224([]byte(password))
 		if err = core.SetValue("admin_pass", hex.EncodeToString(hash[:])); err != nil {
 			return err
@@ -59,7 +70,7 @@ func setupManager() error {
 		if err = config.Mysql.CreateUser("owner", base64.StdEncoding.EncodeToString([]byte(pass)), pass); err != nil {
 			return err
 		}
-		access := fmt.Sprintf("管理后台: https://%s:%d\n管理员: admin\n客户端用户名: owner\n客户端密码: %s\n", config.SSl.Sni, config.LocalPort, pass)
+		access := fmt.Sprintf("管理后台: https://%s:%d\n管理员: %s\n客户端用户名: owner\n客户端密码: %s\n", config.SSl.Sni, config.LocalPort, core.AdminUsername(), pass)
 		path := os.Getenv("TROJAN_ACCESS_FILE")
 		if path == "" {
 			path = "/root/trojan-access.txt"

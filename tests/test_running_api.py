@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import base64,json,urllib.request,urllib.parse,urllib.error
+import os,base64,json,urllib.request,urllib.parse,urllib.error
 BASE='http://127.0.0.1:80'
 def api(path,method='GET',data=None,token=None):
     body=urllib.parse.urlencode(data).encode() if data is not None else None
@@ -8,8 +8,11 @@ def api(path,method='GET',data=None,token=None):
     with urllib.request.urlopen(request,timeout=10) as response: return json.load(response)
 
 def main():
-    token=api('/auth/login','POST',{'username':'admin','password':'test-admin-password-123'})['token']
+    token=api('/auth/login','POST',{'username':os.getenv('TROJAN_TEST_ADMIN_USER','smoke-admin'),'password':'test-admin-password-123'})['token']
     users=api('/trojan/user',token=token)['Data']['userList']; assert users
+    try: api('/auth/login','POST',{'username':'admin','password':'test-admin-password-123'})
+    except urllib.error.HTTPError as e: assert e.code==401
+    else: raise AssertionError('Default admin alias unexpectedly still accepted')
     try: api('/auth/register','POST',{'username':'admin','password':'attacker-password-123'})
     except urllib.error.HTTPError as e: assert e.code==403
     else: raise AssertionError('Administrator overwrite was allowed')

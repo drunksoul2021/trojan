@@ -2,11 +2,13 @@
 set -Eeuo pipefail
 umask 077
 bundle=$(cd "$(dirname "$0")/.." && pwd)
-home=/usr/local/lib/trojan-manager
+manager_home=/usr/local/lib/trojan-manager
 config=/usr/local/etc/trojan/config.json
+admin_user=${TROJAN_ADMIN_USER:-admin}
 domain=""; email=""; yes=0; mode=alpn; cert_file=""; key_file=""
 while (($#)); do
     case "$1" in
+        --admin-user) admin_user="${2:?}"; shift 2 ;;
         --domain) domain="${2:?}"; shift 2 ;;
         --email) email="${2:?}"; shift 2 ;;
         --yes) yes=1; shift ;;
@@ -49,20 +51,20 @@ else
 fi
 if [[ $existing == 0 && -z "${TROJAN_ADMIN_PASSWORD:-}" ]]; then
     [[ $yes == 0 ]] || { echo "首次无人值守安装必须设置 TROJAN_ADMIN_PASSWORD。" >&2; exit 1; }
-    read -r -s -p "请输入管理后台 admin 密码（至少 12 位）: " TROJAN_ADMIN_PASSWORD </dev/tty
+    read -r -s -p "请输入管理后台密码（至少 6 位，建议 12 位以上）: " TROJAN_ADMIN_PASSWORD </dev/tty
     echo
     read -r -s -p "请再次输入密码: " confirm </dev/tty
     echo
     [[ "$TROJAN_ADMIN_PASSWORD" == "$confirm" ]] || { echo "两次密码不一致。" >&2; exit 1; }
 fi
 admin_password=${TROJAN_ADMIN_PASSWORD:-}
-if [[ $existing == 0 && ${#admin_password} -lt 12 ]]; then
-    echo "管理员密码至少 12 位。" >&2; exit 1
+if [[ $existing == 0 && ${#admin_password} -lt 6 ]]; then
+    echo "管理员密码至少 6 位。" >&2; exit 1
 fi
 python3 "$bundle/scripts/apt-sources.py"
 apt-get -o Acquire::ForceIPv4=true update
-DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::ForceIPv4=true install -y \
-    docker.io ca-certificates curl python3 openssl socat cron iproute2 \
+DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::ForceIPv4=true install -y --no-install-recommends \
+    docker.io docker-cli ca-certificates curl python3 openssl socat cron iproute2 \
     libboost-system1.83.0 libboost-program-options1.83.0 libmariadb3 libssl3t64
 systemctl enable --now docker.service
 docker info >/dev/null
@@ -112,17 +114,17 @@ rollback() {
 }
 trap rollback EXIT
 systemctl stop trojan.service trojan-web.service >/dev/null 2>&1 || true
-mkdir -p "$home" /usr/local/etc/trojan
+mkdir -p "$manager_home" /usr/local/etc/trojan
 install -m 755 "$bundle/manager" /usr/local/bin/trojan
-install -m 755 "$bundle/trojan-core" "$home/trojan-core"
-cp -a "$bundle/scripts" "$bundle/acme.sh" "$home/"
+install -m 755 "$bundle/trojan-core" "$manager_home/trojan-core"
+cp -a "$bundle/scripts" "$bundle/acme.sh" "$manager_home/"
 install -m 644 "$bundle/asset/trojan.service" /etc/systemd/system/trojan.service
 install -m 644 "$bundle/asset/trojan-web.service" /etc/systemd/system/trojan-web.service
 systemctl daemon-reload
 if [[ $existing == 0 ]]; then
     db_password=$(openssl rand -hex 24)
     root_password=$(openssl rand -hex 24)
-    python3 "$home/scripts/configure.py" init "$config" "$domain" "$db_password"
+    python3 "$manager_home/scripts/configure.py" init "$config" "$domain" "$db_password"
     mkdir -p /var/lib/trojan-mariadb
     cat > "$backup/mariadb.env" <<EOF
 MARIADB_ROOT_PASSWORD=$root_password
@@ -135,19 +137,19 @@ EOF
         --env-file "$backup/mariadb.env" mariadb:11.4 \
         --innodb-buffer-pool-size=32M --performance-schema=OFF --max-connections=40 >/dev/null
 fi
-TROJAN_ADMIN_PASSWORD="${TROJAN_ADMIN_PASSWORD:-}" /usr/local/bin/trojan setup
-bash "$home/scripts/firewall.sh"
+TROJAN_ADMIN_USER="$admin_user" TROJAN_ADMIN_PASSWORD="${TROJAN_ADMIN_PASSWORD:-}" /usr/local/bin/trojan setup
+bash "$manager_home/scripts/firewall.sh"
 if [[ -n "$cert_file" ]]; then
     cert_dir=/usr/local/etc/trojan/certs
     mkdir -p "$cert_dir"; chmod 700 "$cert_dir"
     install -m 600 "$key_file" "$cert_dir/private.key"
     install -m 644 "$cert_file" "$cert_dir/fullchain.pem"
-    python3 "$home/scripts/configure.py" tls "$config" "$cert_dir/fullchain.pem" "$cert_dir/private.key" "$domain"
+    python3 "$manager_home/scripts/configure.py" tls "$config" "$cert_dir/fullchain.pem" "$cert_dir/private.key" "$domain"
 else
     cert_args=(--domain "$domain")
     [[ -z "$email" ]] || cert_args+=(--email "$email")
     [[ "$mode" != standalone ]] || cert_args+=(--http)
-    bash "$home/scripts/certificates.sh" "${cert_args[@]}"
+    bash "$manager_home/scripts/certificates.sh" "${cert_args[@]}"
 fi
 install -m 644 "$bundle/asset/trojan-firewall.service" /etc/systemd/system/trojan-firewall.service
 systemctl daemon-reload
@@ -168,7 +170,7 @@ timeout 10 openssl s_client -connect "127.0.0.1:$listen_port" -servername "$doma
 trap - EXIT
 echo "安装成功：服务与 TLS 验证已通过。"
 echo "管理后台：https://$domain:$listen_port"
-echo "管理员：admin（已有管理员密码保留）"
+echo "管理员：首次使用指定用户名，更新时保留已有账号与密码。"
 echo "首次客户端信息保存在 /root/trojan-access.txt，仅 root 可读。"
 echo "已有程序和配置备份：$backup"
 echo "云厂商防火墙需允许 $listen_port/TCP；证书续期还需 443/TCP。"

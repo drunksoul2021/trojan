@@ -36,7 +36,7 @@ func InstallDocker() {
 	if util.CheckCommandExists("docker") {
 		return
 	}
-	if err := util.ExecCommand("apt-get -o Acquire::ForceIPv4=true update && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::ForceIPv4=true install -y docker.io && systemctl enable --now docker"); err != nil {
+	if err := util.ExecCommand("apt-get -o Acquire::ForceIPv4=true update && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::ForceIPv4=true install -y docker.io docker-cli && systemctl enable --now docker"); err != nil {
 		fmt.Println("Docker 安装失败:", err)
 	}
 }

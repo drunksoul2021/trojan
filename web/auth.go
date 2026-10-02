@@ -69,7 +69,7 @@ func jwtInit(timeout int) {
 			if err != nil {
 				return nil, err
 			}
-			if userID != "admin" {
+			if userID != core.AdminUsername() {
 				mysql := core.GetMysql()
 				user := mysql.GetUserByName(userID)
 				if user == nil {
@@ -77,7 +77,7 @@ func jwtInit(timeout int) {
 				}
 				password = user.EncryptPass
 			} else {
-				if password, err = core.GetValue(userID + "_pass"); err != nil {
+				if password, err = core.GetValue("admin_pass"); err != nil {
 					return nil, err
 				}
 			}
@@ -120,13 +120,13 @@ func updateUser(c *gin.Context) {
 	responseBody := controller.ResponseBody{Msg: "success"}
 	defer controller.TimeCost(time.Now(), &responseBody)
 	username := "admin"
-	if c.FullPath() != "/auth/register" && RequestUsername(c) != "admin" {
+	if c.FullPath() != "/auth/register" && RequestUsername(c) != core.AdminUsername() {
 		c.AbortWithStatus(403)
 		return
 	}
 	pass := c.PostForm("password")
-	if len(pass) < 12 {
-		c.JSON(400, gin.H{"message": "密码至少 12 位"})
+	if len(pass) < 6 {
+		c.JSON(400, gin.H{"message": "密码至少 6 位"})
 		return
 	}
 	hash := sha256.Sum224([]byte(pass))

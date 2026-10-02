@@ -13,10 +13,15 @@ for n in $(seq 1 30); do
 done
 docker exec "$name" openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -keyout /root/test.key -out /root/test.pem -days 2 -subj /CN=server.example.com -addext subjectAltName=DNS:server.example.com
 install_test() {
- docker exec -e TROJAN_ADMIN_PASSWORD="$1" -e SSL_CERT_FILE=/root/test.pem "$name" bash /opt/bundle/scripts/install-debian.sh --domain server.example.com --cert-file /root/test.pem --key-file /root/test.key --yes
+ docker exec -e TROJAN_ADMIN_PASSWORD="$1" -e SSL_CERT_FILE=/root/test.pem "$name" bash /opt/bundle/scripts/install-debian.sh --domain server.example.com --admin-user smoke-admin --cert-file /root/test.pem --key-file /root/test.key --yes
 }
 install_test test-admin-password-123
 docker exec "$name" python3 /opt/test_running_api.py
 install_test different-password-456
 docker exec "$name" python3 /opt/test_running_api.py
-echo FULL_INSTALL_AND_REPEAT_OK
+# Force a service failure after files were replaced, then verify rollback.
+docker exec "$name" bash -c 'printf "#!/bin/bash\n[[ \"\$1\" == -v ]] && exit 0\nexit 1\n" > /opt/bundle/trojan-core; chmod 755 /opt/bundle/trojan-core'
+if install_test different-password-456; then echo "Failed kernel was accepted" >&2; exit 1; fi
+docker exec "$name" systemctl is-active --quiet trojan.service
+docker exec "$name" python3 /opt/test_running_api.py
+echo FULL_INSTALL_REPEAT_AND_ROLLBACK_OK

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 umask 077
-home=/usr/local/lib/trojan-manager
+manager_home=/usr/local/lib/trojan-manager
 certs=/usr/local/etc/trojan/certs
 state=/run/trojan-cert-renew.state
 case "${1:-}" in
@@ -18,7 +18,7 @@ case "${1:-}" in
     reload)
         [[ ! -f /run/trojan-certificate-installing ]] || exit 0
         domain=$(python3 -c 'import json; print(json.load(open("/usr/local/etc/trojan/config.json"))["ssl"]["sni"])')
-        if ! python3 "$home/scripts/configure.py" validate-cert "$certs/fullchain.pem" "$certs/private.key" "$domain"; then
+        if ! python3 "$manager_home/scripts/configure.py" validate-cert "$certs/fullchain.pem" "$certs/private.key" "$domain"; then
             for f in fullchain.pem private.key; do
                 [[ ! -s "$certs/previous/$f" ]] || cp -p "$certs/previous/$f" "$certs/$f"
             done

@@ -12,17 +12,17 @@
 curl -4 -fsSL --retry 3 https://raw.githubusercontent.com/drunksoul2021/trojan/master/install.sh -o /tmp/trojan-install.sh && bash /tmp/trojan-install.sh
 ```
 
-按照提示输入域名和至少 12 位管理员密码。脚本自动完成：
+按照提示输入域名和管理员密码（至少 6 位，建议 12 位以上）。脚本自动完成：
 
 - 备份并修复 Debian APT 主源、更新源、安全源和 Signed-By 配置，保留第三方源。
 - APT 和安装下载使用 IPv4；保留系统 DNS 配置。
-- 使用 `apt-get install -y docker.io` 安装 Docker，设置开机启动。
+- 使用 `apt-get install -y docker.io docker-cli`（Debian 13 将守护进程与客户端拆成两个包） 安装 Docker，设置开机启动。
 - 新装数据库使用官方 `mariadb:11.4` 镜像，端口仅绑定 `127.0.0.1:3307`。
 - 安装本仓库构建的管理程序及内核，管理网页随程序打包，不下载外部前端。
 - 使用 443 端口申请证书，安装到固定目录，每天自动检查续期 4 次。
 - 配置服务、开机启动及防火墙，检查数据库、管理网页和 TLS，全部通过才提示成功。
 
-后台地址：`https://你的域名`，管理员用户名：`admin`。首个客户端账号信息保存在服务器的 `/root/trojan-access.txt`，仅 root 可读。
+后台地址：`https://你的域名`，管理员用户名默认为 `admin`，可通过 `--admin-user 用户名` 指定。首个客户端账号信息保存在服务器的 `/root/trojan-access.txt`，仅 root 可读。
 
 **证书申请要求域名解析正确、443 端口能从公网访问。** 软件无法替代云厂商控制台的安全组设置。
 
@@ -33,8 +33,10 @@ curl -4 -fsSL --retry 3 https://raw.githubusercontent.com/drunksoul2021/trojan/m
 指定版本：
 
 ```bash
-bash /tmp/trojan-install.sh --version v2026.10.02.000000 --update --yes
+bash /tmp/trojan-install.sh --version '替换为发布页中的版本号' --update --yes
 ```
+
+自定义管理员用户名示例：`bash /tmp/trojan-install.sh --domain 你的域名 --admin-user 你的用户名`。升级不会重置已有账号。
 
 无人值守首次安装需提前设置 `TROJAN_ADMIN_PASSWORD`，并提供 `--domain`。不要把真实密码写入公共脚本或 GitHub 仓库。
 

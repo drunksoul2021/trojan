@@ -11,10 +11,10 @@ while (($#)); do
         --version) version="${2:?请提供版本号}"; shift 2 ;;
         -h|--help)
             echo "Debian 13 x64 一键安装 / 更新"
-            echo "用法: bash install.sh [--domain 域名] [--email 邮箱] [--version v版本] [--yes]"
+            echo "用法: bash install.sh [--domain 域名] [--admin-user 用户名] [--email 邮箱] [--version v版本] [--yes]"
             echo "管理员密码交互输入，或通过 TROJAN_ADMIN_PASSWORD 环境变量提供。"
             exit 0 ;;
-        --domain|--email|--cert-file|--key-file) args+=("$1" "${2:?缺少参数}"); shift 2 ;;
+        --domain|--admin-user|--email|--cert-file|--key-file) args+=("$1" "${2:?缺少参数}"); shift 2 ;;
         --yes|--update|--http) args+=("$1"); shift ;;
         *) echo "不支持的参数: $1" >&2; exit 1 ;;
     esac

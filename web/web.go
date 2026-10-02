@@ -180,7 +180,7 @@ func Start(host string, port, timeout int, isSSL bool) error {
 	noTokenRouter(router)
 	router.Use(Auth(router, timeout).MiddlewareFunc())
 	router.Use(func(c *gin.Context) {
-		if RequestUsername(c) != "admin" && !(c.Request.Method == "GET" && c.Request.URL.Path == "/trojan/user") {
+		if RequestUsername(c) != core.AdminUsername() && !(c.Request.Method == "GET" && c.Request.URL.Path == "/trojan/user") {
 			c.AbortWithStatusJSON(403, gin.H{"message": "仅管理员可以操作"})
 			return
 		}
