@@ -35,8 +35,8 @@ func AddUser() {
 	randomUser := util.RandString(4, util.LETTER)
 	randomPass := util.RandString(8, util.LETTER+util.DIGITS)
 	inputUser := util.Input(fmt.Sprintf("生成随机用户名: %s, 使用直接回车, 否则输入自定义用户名: ", randomUser), randomUser)
-	if inputUser == "admin" {
-		fmt.Println(util.Yellow("不能新建用户名为'admin'的用户!"))
+	if inputUser == core.AdminUsername() {
+		fmt.Println(util.Yellow("客户端用户名不能与管理员相同。"))
 		return
 	}
 	mysql := core.GetMysql()

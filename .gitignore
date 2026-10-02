@@ -1,2 +1,5 @@
-.vscode
-.idea
+.vscode/
+.idea/
+dist/
+__pycache__/
+*.pyc

@@ -71,7 +71,11 @@ CREATE TABLE IF NOT EXISTS users (
 func (mysql *Mysql) GetDB() *sql.DB {
 	// 屏蔽mysql驱动包的日志输出
 	mysqlDriver.SetLogger(log.New(io.Discard, "", 0))
-	conn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", mysql.Username, mysql.Password, mysql.ServerAddr, mysql.ServerPort, mysql.Database)
+	cfg := mysqlDriver.NewConfig()
+	cfg.User, cfg.Passwd = mysql.Username, mysql.Password
+	cfg.Net, cfg.Addr, cfg.DBName = "tcp", fmt.Sprintf("%s:%d", mysql.ServerAddr, mysql.ServerPort), mysql.Database
+	cfg.Timeout, cfg.ReadTimeout, cfg.WriteTimeout = 3*time.Second, 5*time.Second, 5*time.Second
+	conn := cfg.FormatDSN()
 	db, err := sql.Open("mysql", conn)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -126,7 +130,8 @@ func queryUserList(db *sql.DB, sql string) ([]*User, error) {
 	return userList, nil
 }
 
-func queryUser(db *sql.DB, sql string) (*User, error) {
+func queryUser(db *sql.DB, sql string) (*User, error) { return queryUserByValue(db, sql) }
+func queryUserByValue(db *sql.DB, sql string, args ...interface{}) (*User, error) {
 	var (
 		username    string
 		encryptPass string
@@ -138,7 +143,7 @@ func queryUser(db *sql.DB, sql string) (*User, error) {
 		useDays     uint
 		expiryDate  string
 	)
-	row := db.QueryRow(sql)
+	row := db.QueryRow(sql, args...)
 	if err := row.Scan(&id, &username, &encryptPass, &passShow, &quota, &download, &upload, &useDays, &expiryDate); err != nil {
 		return nil, err
 	}
@@ -153,7 +158,7 @@ func (mysql *Mysql) CreateUser(username string, base64Pass string, originPass st
 	}
 	defer db.Close()
 	encryPass := sha256.Sum224([]byte(originPass))
-	if _, err := db.Exec(fmt.Sprintf("INSERT INTO users(username, password, passwordShow, quota) VALUES ('%s', '%x', '%s', -1);", username, encryPass, base64Pass)); err != nil {
+	if _, err := db.Exec("INSERT INTO users(username,password,passwordShow,quota) VALUES (?,?,?,-1)", username, fmt.Sprintf("%x", encryPass), base64Pass); err != nil {
 		fmt.Println(err)
 		return err
 	}
@@ -168,7 +173,7 @@ func (mysql *Mysql) UpdateUser(id uint, username string, base64Pass string, orig
 	}
 	defer db.Close()
 	encryPass := sha256.Sum224([]byte(originPass))
-	if _, err := db.Exec(fmt.Sprintf("UPDATE users SET username='%s', password='%x', passwordShow='%s' WHERE id=%d;", username, encryPass, base64Pass, id)); err != nil {
+	if _, err := db.Exec("UPDATE users SET username=?, password=?, passwordShow=? WHERE id=?", username, fmt.Sprintf("%x", encryPass), base64Pass, id); err != nil {
 		fmt.Println(err)
 		return err
 	}
@@ -343,7 +348,7 @@ func (mysql *Mysql) GetUserByName(name string) *User {
 		return nil
 	}
 	defer db.Close()
-	user, err := queryUser(db, fmt.Sprintf("SELECT * FROM users WHERE BINARY username='%s'", name))
+	user, err := queryUserByValue(db, "SELECT * FROM users WHERE BINARY username=?", name)
 	if err != nil {
 		return nil
 	}
@@ -357,7 +362,7 @@ func (mysql *Mysql) GetUserByPass(pass string) *User {
 		return nil
 	}
 	defer db.Close()
-	user, err := queryUser(db, fmt.Sprintf("SELECT * FROM users WHERE BINARY passwordShow='%s'", pass))
+	user, err := queryUserByValue(db, "SELECT * FROM users WHERE BINARY passwordShow=?", pass)
 	if err != nil {
 		return nil
 	}

@@ -1,13 +1,13 @@
 package util
 
 import (
+	crand "crypto/rand"
 	"fmt"
 	"github.com/eiannone/keyboard"
-	"math/rand"
+	"math/big"
 	"reflect"
 	"regexp"
 	"strconv"
-	"time"
 )
 
 const (
@@ -47,9 +47,12 @@ func IsInteger(input string) bool {
 func RandString(length int, source string) string {
 	var runes = []rune(source)
 	b := make([]rune, length)
-	rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := range b {
-		b[i] = runes[rand.Intn(len(runes))]
+		index, err := crand.Int(crand.Reader, big.NewInt(int64(len(runes))))
+		if err != nil {
+			panic(err)
+		}
+		b[i] = runes[index.Int64()]
 	}
 	return string(b)
 }

@@ -1,0 +1,36 @@
+name: Debian 13 build and release
+on:
+  push:
+    branches: [master, feat/debian13-independent-installer]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare Debian 13 x64 build environment
+        run: docker build -f scripts/build-env.Dockerfile -t trojan-build .
+      - name: Test and build independent bundle
+        run: |
+          version="v$(date -u +%Y.%m.%d.%H%M%S)"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          docker run --rm -v "$PWD:/src" trojan-build bash -c "python3 -m unittest discover -s tests -v && shellcheck -S error install.sh scripts/*.sh && bash scripts/build-debian.sh '$version'"
+      - name: Verify fresh installation and repeated installation
+        run: bash tests/install-smoke.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trojan-debian13-amd64
+          path: |
+            dist/trojan-debian13-amd64.tar.gz
+            dist/SHA256SUMS
+      - name: Publish this repository's installation package
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          printf 'Independent Debian 13 x64 installation package. Includes management UI, Trojan core, ACME client, Docker setup, signed Debian sources and IPv4 configuration.\n' > release-notes.txt
+          gh release create "$VERSION" dist/trojan-debian13-amd64.tar.gz dist/SHA256SUMS --target "$GITHUB_SHA" --title "$VERSION" --notes-file release-notes.txt --latest

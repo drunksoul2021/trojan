@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"os"
-	"trojan/core"
 	"trojan/trojan"
 	"trojan/util"
 )
@@ -26,19 +25,11 @@ func Execute() {
 	}
 }
 
-func check() {
-	if !util.IsExists("/usr/local/etc/trojan/config.json") {
-		fmt.Println("本机未安装trojan, 正在自动安装...")
-		trojan.InstallTrojan("")
-		core.WritePassword(nil)
-		trojan.InstallTls()
-		trojan.InstallMysql()
-		util.SystemctlRestart("trojan-web")
-	}
-}
-
 func mainMenu() {
-	check()
+	if !util.IsExists("/usr/local/etc/trojan/config.json") {
+		fmt.Println("请先执行仓库 README 中的一键安装命令。")
+		return
+	}
 exit:
 	for {
 		fmt.Println()

@@ -8,7 +8,14 @@ import (
 	"os"
 )
 
-var configPath = "/usr/local/etc/trojan/config.json"
+var configPath = configLocation()
+
+func configLocation() string {
+	if p := os.Getenv("TROJAN_CONFIG_PATH"); p != "" {
+		return p
+	}
+	return "/usr/local/etc/trojan/config.json"
+}
 
 // ServerConfig 结构体
 type ServerConfig struct {
@@ -53,7 +60,7 @@ func Save(data []byte, path string) bool {
 	if path == "" {
 		path = configPath
 	}
-	if err := os.WriteFile(path, pretty.Pretty(data), 0644); err != nil {
+	if err := os.WriteFile(path, pretty.Pretty(data), 0600); err != nil {
 		fmt.Println(err)
 		return false
 	}

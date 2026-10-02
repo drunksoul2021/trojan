@@ -110,7 +110,7 @@ func Version() string {
 	if Type() == "trojan-go" {
 		flag = "-version"
 	}
-	result := strings.TrimSpace(util.ExecCommandWithResult("/usr/bin/trojan/trojan " + flag))
+	result := strings.TrimSpace(util.ExecCommandWithResult("/usr/local/lib/trojan-manager/trojan-core " + flag))
 	if len(result) == 0 {
 		return ""
 	}
@@ -131,8 +131,7 @@ func SwitchType(tType string) error {
 	if err := core.SetValue("trojanType", tType); err != nil {
 		return err
 	}
-	InstallTrojan("")
-	return nil
+	return InstallTrojan("")
 }
 
 // Type Trojan类型

@@ -21,7 +21,7 @@ func UserList(requestUser string) *ResponseBody {
 		responseBody.Msg = err.Error()
 		return &responseBody
 	}
-	if requestUser != "admin" {
+	if requestUser != core.AdminUsername() {
 		findUser := false
 		for _, user := range userList {
 			if user.Username == requestUser {
@@ -66,8 +66,8 @@ func PageUserList(curPage int, pageSize int) *ResponseBody {
 func CreateUser(username string, password string) *ResponseBody {
 	responseBody := ResponseBody{Msg: "success"}
 	defer TimeCost(time.Now(), &responseBody)
-	if username == "admin" {
-		responseBody.Msg = "不能创建用户名为admin的用户!"
+	if username == core.AdminUsername() {
+		responseBody.Msg = "客户端用户名不能与管理员相同。"
 		return &responseBody
 	}
 	mysql := core.GetMysql()
@@ -94,8 +94,8 @@ func CreateUser(username string, password string) *ResponseBody {
 func UpdateUser(id uint, username string, password string) *ResponseBody {
 	responseBody := ResponseBody{Msg: "success"}
 	defer TimeCost(time.Now(), &responseBody)
-	if username == "admin" {
-		responseBody.Msg = "不能更改用户名为admin的用户!"
+	if username == core.AdminUsername() {
+		responseBody.Msg = "客户端用户名不能与管理员相同。"
 		return &responseBody
 	}
 	mysql := core.GetMysql()

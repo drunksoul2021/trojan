@@ -1,0 +1,18 @@
+[Unit]
+Description=Trojan server
+After=network-online.target docker.service
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+TimeoutStartSec=150
+ExecStartPre=/usr/bin/python3 /usr/local/lib/trojan-manager/scripts/wait-database.py
+ExecStart=/usr/local/lib/trojan-manager/trojan-core /usr/local/etc/trojan/config.json
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
