@@ -10,27 +10,8 @@ import (
 	"time"
 )
 
-func systemctlReplace(out string) (bool, error) {
-	var (
-		err       error
-		isReplace bool
-	)
-	if IsExists("/.dockerenv") && strings.Contains(out, "Failed to get D-Bus") {
-		isReplace = true
-		fmt.Println(Yellow("正在下载并替换适配的systemctl。。"))
-		if err = ExecCommand("curl -L https://raw.githubusercontent.com/gdraheim/docker-systemctl-replacement/master/files/docker/systemctl.py -o /usr/bin/systemctl && chmod +x /usr/bin/systemctl"); err != nil {
-			return isReplace, err
-		}
-		fmt.Println()
-	}
-	return isReplace, err
-}
-
 func systemctlBase(name, operate string) (string, error) {
-	out, err := exec.Command("bash", "-c", fmt.Sprintf("systemctl %s %s", operate, name)).CombinedOutput()
-	if v, _ := systemctlReplace(string(out)); v {
-		out, err = exec.Command("bash", "-c", fmt.Sprintf("systemctl %s %s", operate, name)).CombinedOutput()
-	}
+	out, err := exec.Command("systemctl", operate, name).CombinedOutput()
 	return string(out), err
 }
 
@@ -116,11 +97,6 @@ func ExecCommand(command string) error {
 // ExecCommandWithResult 运行命令并获取结果
 func ExecCommandWithResult(command string) string {
 	out, err := exec.Command("bash", "-c", command).CombinedOutput()
-	if strings.Contains(command, "systemctl") {
-		if v, _ := systemctlReplace(string(out)); v {
-			out, err = exec.Command("bash", "-c", command).CombinedOutput()
-		}
-	}
 	if err != nil && !strings.Contains(err.Error(), "exit status") {
 		fmt.Println("err: " + err.Error())
 		return ""
