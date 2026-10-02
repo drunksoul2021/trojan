@@ -2,19 +2,17 @@ package trojan
 
 import (
 	"fmt"
-	"net"
-	"runtime"
+	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
-	"trojan/asset"
 	"trojan/core"
 	"trojan/util"
 )
 
 var (
-	dockerInstallUrl = "https://docker-install.netlify.app/install.sh"
-	dbDockerRun      = "docker run --name trojan-mariadb --restart=always -p %d:3306 -v /home/mariadb:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=%s -e MYSQL_ROOT_HOST=%% -e MYSQL_DATABASE=trojan -d mariadb:10.2"
+	dbDockerRun = "docker run --name trojan-mariadb --restart=always -p 127.0.0.1:%d:3306 -v /home/mariadb:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=%s -e MYSQL_ROOT_HOST=%% -e MYSQL_DATABASE=trojan -d mariadb:11.4"
 )
 
 // InstallMenu 安装目录
@@ -33,119 +31,47 @@ func InstallMenu() {
 	}
 }
 
-// InstallDocker 安装docker
+// InstallDocker installs Docker from Debian's maintained package repository.
 func InstallDocker() {
-	if !util.CheckCommandExists("docker") {
-		util.RunWebShell(dockerInstallUrl)
-		fmt.Println()
-	}
-}
-
-// InstallTrojan 安装trojan
-func InstallTrojan(version string) {
-	fmt.Println()
-	data := string(asset.GetAsset("trojan-install.sh"))
-	checkTrojan := util.ExecCommandWithResult("systemctl list-unit-files|grep trojan.service")
-	if (checkTrojan == "" && runtime.GOARCH != "amd64") || Type() == "trojan-go" {
-		data = strings.ReplaceAll(data, "TYPE=0", "TYPE=1")
-	}
-	if version != "" {
-		data = strings.ReplaceAll(data, "INSTALL_VERSION=\"\"", "INSTALL_VERSION=\""+version+"\"")
-	}
-	util.ExecCommand(data)
-	util.OpenPort(443)
-	util.SystemctlRestart("trojan")
-	util.SystemctlEnable("trojan")
-}
-
-// InstallTls 安装证书
-func InstallTls() {
-	domain := ""
-	server := "letsencrypt"
-	fmt.Println()
-	choice := util.LoopInput("请选择使用证书方式: ", []string{"Let's Encrypt 证书", "ZeroSSL 证书", "BuyPass 证书", "自定义证书路径"}, true)
-	if choice < 0 {
+	if util.CheckCommandExists("docker") {
 		return
-	} else if choice == 4 {
-		crtFile := util.Input("请输入证书的cert文件路径: ", "")
-		keyFile := util.Input("请输入证书的key文件路径: ", "")
-		if !util.IsExists(crtFile) || !util.IsExists(keyFile) {
-			fmt.Println("输入的cert或者key文件不存在!")
-		} else {
-			domain = util.Input("请输入此证书对应的域名: ", "")
-			if domain == "" {
-				fmt.Println("输入域名为空!")
-				return
-			}
-			core.WriteTls(crtFile, keyFile, domain)
-		}
-	} else {
-		if choice == 2 {
-			server = "zerossl"
-		} else if choice == 3 {
-			server = "buypass"
-		}
-		localIP := util.GetLocalIP()
-		fmt.Printf("本机ip: %s\n", localIP)
-		for {
-			domain = util.Input("请输入申请证书的域名: ", "")
-			ipList, err := net.LookupIP(domain)
-			fmt.Printf("%s 解析到的ip: %v\n", domain, ipList)
-			if err != nil {
-				fmt.Println(err)
-				fmt.Println("域名有误,请重新输入")
-				continue
-			}
-			checkIp := false
-			for _, ip := range ipList {
-				if localIP == ip.String() {
-					checkIp = true
-				}
-			}
-			if checkIp {
-				break
-			} else {
-				fmt.Println("输入的域名和本机ip不一致, 请重新输入!")
-			}
-		}
-		util.InstallPack("socat")
-		if !util.IsExists("/root/.acme.sh/acme.sh") {
-			util.RunWebShell("https://get.acme.sh")
-		}
-		util.SystemctlStop("trojan-web")
-		util.OpenPort(80)
-		checkResult := util.ExecCommandWithResult("/root/.acme.sh/acme.sh -v|tr -cd '[0-9]'")
-		acmeVersion, _ := strconv.Atoi(checkResult)
-		if acmeVersion < 300 {
-			util.ExecCommand("/root/.acme.sh/acme.sh --upgrade")
-		}
-		if server != "letsencrypt" {
-			var email string
-			for {
-				email = util.Input(fmt.Sprintf("请输入申请%s域名所需的邮箱: ", server), "")
-				if email == "" {
-					fmt.Println("申请域名的邮箱地址为空!")
-					return
-				} else if util.VerifyEmailFormat(email) {
-					break
-				} else {
-					fmt.Println("邮箱格式不正确, 请重新输入!")
-				}
-			}
-			util.ExecCommand(fmt.Sprintf("bash /root/.acme.sh/acme.sh --server %s --register-account -m %s", server, email))
-		}
-		issueCommand := fmt.Sprintf("bash /root/.acme.sh/acme.sh --issue -d %s --debug --standalone --keylength ec-256 --force --server %s", domain, server)
-		if server == "buypass" {
-			issueCommand = issueCommand + " --days 170"
-		}
-		util.ExecCommand(issueCommand)
-		crtFile := "/root/.acme.sh/" + domain + "_ecc" + "/fullchain.cer"
-		keyFile := "/root/.acme.sh/" + domain + "_ecc" + "/" + domain + ".key"
-		core.WriteTls(crtFile, keyFile, domain)
+	}
+	if err := util.ExecCommand("apt-get -o Acquire::ForceIPv4=true update && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::ForceIPv4=true install -y docker.io && systemctl enable --now docker"); err != nil {
+		fmt.Println("Docker 安装失败:", err)
+	}
+}
+
+// InstallTrojan updates from this repository's independently built release.
+func InstallTrojan(version string) error {
+	args := []string{"/usr/local/lib/trojan-manager/scripts/update.sh"}
+	if version != "" {
+		args = append(args, "--version", version)
+	}
+	cmd := exec.Command("bash", args...)
+	cmd.Stdout, cmd.Stderr, cmd.Stdin = os.Stdout, os.Stderr, os.Stdin
+	return cmd.Run()
+}
+
+// InstallTls validates issuance before changing certificate configuration.
+func InstallTls() {
+	config := core.GetConfig()
+	if config == nil {
+		fmt.Println("请先完成一键安装。")
+		return
+	}
+	domain := util.Input("请输入证书域名（回车保留当前域名）: ", config.SSl.Sni)
+	email := util.Input("联系邮箱（可留空）: ", "")
+	args := []string{"/usr/local/lib/trojan-manager/scripts/certificates.sh", "--domain", domain}
+	if email != "" {
+		args = append(args, "--email", email)
+	}
+	cmd := exec.Command("bash", args...)
+	cmd.Stdout, cmd.Stderr, cmd.Stdin = os.Stdout, os.Stderr, os.Stdin
+	if err := cmd.Run(); err != nil {
+		fmt.Println("证书安装失败，已有配置保留:", err)
+		return
 	}
 	Restart()
-	util.SystemctlRestart("trojan-web")
-	fmt.Println()
 }
 
 // InstallMysql 安装mysql
@@ -165,14 +91,21 @@ func InstallMysql() {
 	} else if choice == 1 {
 		mysql = core.Mysql{ServerAddr: "127.0.0.1", ServerPort: util.RandomPort(), Password: util.RandString(8, util.LETTER+util.DIGITS), Username: "root", Database: "trojan"}
 		InstallDocker()
-		fmt.Println(fmt.Sprintf(dbDockerRun, mysql.ServerPort, mysql.Password))
+		// Never print database credentials.
 		if util.CheckCommandExists("setenforce") {
 			util.ExecCommand("setenforce 0")
 		}
-		util.OpenPort(mysql.ServerPort)
-		util.ExecCommand(fmt.Sprintf(dbDockerRun, mysql.ServerPort, mysql.Password))
+		if err := util.ExecCommand(fmt.Sprintf(dbDockerRun, mysql.ServerPort, mysql.Password)); err != nil {
+			fmt.Println("数据库容器启动失败:", err)
+			return
+		}
 		db := mysql.GetDB()
+		deadline := time.Now().Add(90 * time.Second)
 		for {
+			if time.Now().After(deadline) {
+				fmt.Println("数据库启动超时，请查看 Docker 日志。")
+				return
+			}
 			fmt.Printf("%s mariadb启动中,请稍等...\n", time.Now().Format("2006-01-02 15:04:05"))
 			err := db.Ping()
 			if err == nil {

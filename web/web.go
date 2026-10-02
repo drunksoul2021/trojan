@@ -172,13 +172,20 @@ func noTokenRouter(router *gin.Engine) {
 }
 
 // Start web启动入口
-func Start(host string, port, timeout int, isSSL bool) {
+func Start(host string, port, timeout int, isSSL bool) error {
 	router := gin.Default()
 	router.SetTrustedProxies(nil)
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 	staticRouter(router)
 	noTokenRouter(router)
 	router.Use(Auth(router, timeout).MiddlewareFunc())
+	router.Use(func(c *gin.Context) {
+		if RequestUsername(c) != "admin" && !(c.Request.Method == "GET" && c.Request.URL.Path == "/trojan/user") {
+			c.AbortWithStatusJSON(403, gin.H{"message": "仅管理员可以操作"})
+			return
+		}
+		c.Next()
+	})
 	trojanRouter(router)
 	userRouter(router)
 	dataRouter(router)
@@ -189,8 +196,8 @@ func Start(host string, port, timeout int, isSSL bool) {
 	if isSSL {
 		config := core.GetConfig()
 		ssl := &config.SSl
-		router.RunTLS(fmt.Sprintf("%s:%d", host, port), ssl.Cert, ssl.Key)
+		return router.RunTLS(fmt.Sprintf("%s:%d", host, port), ssl.Cert, ssl.Key)
 	} else {
-		router.Run(fmt.Sprintf("%s:%d", host, port))
+		return router.Run(fmt.Sprintf("%s:%d", host, port))
 	}
 }

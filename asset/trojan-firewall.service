@@ -1,0 +1,12 @@
+[Unit]
+Description=Trojan firewall rules
+After=network-online.target nftables.service ufw.service firewalld.service
+Before=trojan.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /usr/local/lib/trojan-manager/scripts/firewall.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

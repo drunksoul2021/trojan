@@ -1,12 +1,13 @@
 package util
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 func systemctlReplace(out string) (bool, error) {
@@ -87,11 +88,17 @@ func RunWebShell(webShellPath string) {
 		fmt.Printf("shell path must start with http or https!")
 		return
 	}
-	resp, err := http.Get(webShellPath)
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Get(webShellPath)
 	if err != nil {
 		fmt.Println(err.Error())
+		return
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		fmt.Println("下载失败:", resp.Status)
+		return
+	}
 	installShell, err := io.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -99,44 +106,11 @@ func RunWebShell(webShellPath string) {
 	ExecCommand(string(installShell))
 }
 
-// ExecCommand 运行命令并实时查看运行结果
+// ExecCommand streams output and preserves process errors without concurrent pipe races.
 func ExecCommand(command string) error {
 	cmd := exec.Command("bash", "-c", command)
-
-	stdout, _ := cmd.StdoutPipe()
-	stderr, _ := cmd.StderrPipe()
-
-	if err := cmd.Start(); err != nil {
-		fmt.Println("Error:The command is err: ", err.Error())
-		return err
-	}
-	ch := make(chan string, 100)
-	stdoutScan := bufio.NewScanner(stdout)
-	stderrScan := bufio.NewScanner(stderr)
-	go func() {
-		for stdoutScan.Scan() {
-			line := stdoutScan.Text()
-			ch <- line
-		}
-	}()
-	go func() {
-		for stderrScan.Scan() {
-			line := stderrScan.Text()
-			ch <- line
-		}
-	}()
-	var err error
-	go func() {
-		err = cmd.Wait()
-		if err != nil && !strings.Contains(err.Error(), "exit status") {
-			fmt.Println("wait:", err.Error())
-		}
-		close(ch)
-	}()
-	for line := range ch {
-		fmt.Println(line)
-	}
-	return err
+	cmd.Stdout, cmd.Stderr, cmd.Stdin = os.Stdout, os.Stderr, os.Stdin
+	return cmd.Run()
 }
 
 // ExecCommandWithResult 运行命令并获取结果

@@ -2,6 +2,7 @@ package util
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"math/rand"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -49,13 +51,23 @@ func IsExists(path string) bool {
 
 // GetLocalIP 获取本机ipv4地址
 func GetLocalIP() string {
-	resp, err := http.Get("http://api.ipify.org")
-	if err != nil {
-		resp, _ = http.Get("http://icanhazip.com")
+	transport := &http.Transport{DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
+		return (&net.Dialer{Timeout: 10 * time.Second}).DialContext(ctx, "tcp4", address)
+	}, TLSHandshakeTimeout: 10 * time.Second}
+	client := &http.Client{Transport: transport, Timeout: 15 * time.Second}
+	for _, endpoint := range []string{"https://api.ipify.org", "https://icanhazip.com"} {
+		resp, err := client.Get(endpoint)
+		if err != nil {
+			continue
+		}
+		data, readErr := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		ip := strings.TrimSpace(string(data))
+		if resp.StatusCode == 200 && readErr == nil && net.ParseIP(ip) != nil && net.ParseIP(ip).To4() != nil {
+			return ip
+		}
 	}
-	defer resp.Body.Close()
-	s, _ := io.ReadAll(resp.Body)
-	return string(s)
+	return ""
 }
 
 // InstallPack 安装指定名字软件
@@ -70,19 +82,12 @@ func InstallPack(name string) {
 	}
 }
 
-// OpenPort 开通指定端口
+// OpenPort applies only configured Trojan TCP rules; the web backend stays private.
 func OpenPort(port int) {
-	if CheckCommandExists("firewall-cmd") {
-		ExecCommand(fmt.Sprintf("firewall-cmd --zone=public --add-port=%d/tcp --add-port=%d/udp --permanent >/dev/null 2>&1", port, port))
-		ExecCommand("firewall-cmd --reload >/dev/null 2>&1")
-	} else {
-		if len(ExecCommandWithResult(fmt.Sprintf(`iptables -nvL --line-number|grep -w "%d"`, port))) > 0 {
-			return
+	if IsExists("/usr/local/lib/trojan-manager/scripts/firewall.sh") {
+		if err := ExecCommand("bash /usr/local/lib/trojan-manager/scripts/firewall.sh"); err != nil {
+			fmt.Println("防火墙配置失败:", err)
 		}
-		ExecCommand(fmt.Sprintf("iptables -I INPUT -p tcp --dport %d -j ACCEPT", port))
-		ExecCommand(fmt.Sprintf("iptables -I INPUT -p udp --dport %d -j ACCEPT", port))
-		ExecCommand(fmt.Sprintf("iptables -I OUTPUT -p udp --sport %d -j ACCEPT", port))
-		ExecCommand(fmt.Sprintf("iptables -I OUTPUT -p tcp --sport %d -j ACCEPT", port))
 	}
 }
 

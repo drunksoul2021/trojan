@@ -1,122 +1,56 @@
-# trojan
-![](https://img.shields.io/github/v/release/Jrohy/trojan.svg) 
-![](https://img.shields.io/docker/pulls/jrohy/trojan.svg)
-[![Go Report Card](https://goreportcard.com/badge/github.com/Jrohy/trojan)](https://goreportcard.com/report/github.com/Jrohy/trojan)
-[![Downloads](https://img.shields.io/github/downloads/Jrohy/trojan/total.svg)](https://img.shields.io/github/downloads/Jrohy/trojan/total.svg)
-[![License](https://img.shields.io/badge/license-GPL%20V3-blue.svg?longCache=true)](https://www.gnu.org/licenses/gpl-3.0.en.html)
+# Trojan：Debian 13 x64 独立安装版
 
+本仓库包含管理程序、管理网页、Trojan 内核源码、ACME 客户端、安装脚本和构建发布流程。安装与更新只下载 **drunksoul2021/trojan** 的发布包，不依赖其他管理项目的发布包或镜像。
 
-trojan多用户管理部署程序
+## 一键安装
 
-## 功能
-- 在线web页面和命令行两种方式管理trojan多用户
-- 启动 / 停止 / 重启 trojan 服务端
-- 支持流量统计和流量限制
-- 命令行模式管理, 支持命令补全
-- 集成acme.sh证书申请
-- 生成客户端配置文件
-- 在线实时查看trojan日志
-- 在线trojan和trojan-go随时切换
-- 支持trojan://分享链接和二维码分享(仅限web页面)
-- 支持转化为clash订阅地址并导入到[clash_for_windows](https://github.com/Fndroid/clash_for_windows_pkg/releases)(仅限web页面)
-- 限制用户使用期限
+准备一台 **Debian 13 (trixie) x64** 服务器，以及一个只通过 **A 记录** 指向服务器公网 IPv4 的域名。该域名不要配置 AAAA 记录。云厂商防火墙需放行 **443/TCP**，SSH 端口保持原配置。
 
-## 安装方式
-*trojan使用请提前准备好服务器可用的域名*  
+登录服务器，以 root 执行：
 
-docker版本有问题，先安装docker再执行下面的一件脚本安装命令，可以跳过docker安装。
-# 方法1：使用官方安装脚本
-curl -fsSL https://get.docker.com | sh
-
-# 方法2：如果是 CentOS/RHEL
-yum install -y docker
-systemctl start docker
-systemctl enable docker
-
-# 方法3：如果是 Ubuntu/Debian
-<img width="1622" height="1016" alt="image" src="https://github.com/user-attachments/assets/6bd35278-e5c6-4bb5-a15f-e4223386c7ba" />
-
-设置为ipv4
-echo "nameserver 8.8.8.8" > /etc/resolv.conf && \
-echo "nameserver 1.1.1.1" >> /etc/resolv.conf
-
-sudo apt-get update -qq && \
-sudo apt-get install -y docker.io && \
-sudo systemctl start docker && \
-sudo systemctl enable docker
-
-###  a. 一键脚本安装
-```
-#安装/更新
-source <(curl -sL https://raw.githubusercontent.com/drunksoul2021/trojan/master/install.sh)
-
-#卸载
-source <(curl -sL https://raw.githubusercontent.com/drunksoul2021/trojan/master/install.sh) --remove
-
-```
-安装完后输入'trojan'可进入管理程序   
-浏览器访问 https://域名 可在线web页面管理trojan用户  
-前端页面源码地址: [trojan-web](https://github.com/Jrohy/trojan-web)
-
-### b. docker运行
-1. 安装mysql  
-
-因为mariadb内存使用比mysql至少减少一半, 所以推荐使用mariadb数据库
-```
-docker run --name trojan-mariadb --restart=always -p 3306:3306 -v /home/mariadb:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=trojan -e MYSQL_ROOT_HOST=% -e MYSQL_DATABASE=trojan -d mariadb:10.2
-```
-端口和root密码以及持久化目录都可以改成其他的
-
-2. 安装trojan
-```
-docker run -it -d --name trojan --net=host --restart=always --privileged jrohy/trojan init
-```
-运行完后进入容器 `docker exec -it trojan bash`, 然后输入'trojan'即可进行初始化安装   
-
-启动web服务: `systemctl start trojan-web`   
-
-设置自启动: `systemctl enable trojan-web`
-
-更新管理程序: `source <(curl -sL https://git.io/trojan-install)`
-
-## 运行截图
-![avatar](asset/1.png)
-![avatar](asset/2.png)
-
-## 命令行
-```
-Usage:
-  trojan [flags]
-  trojan [command]
-
-Available Commands:
-  add           添加用户
-  clean         清空指定用户流量
-  completion    自动命令补全(支持bash和zsh)
-  del           删除用户
-  help          Help about any command
-  info          用户信息列表
-  log           查看trojan日志
-  port          修改trojan端口
-  restart       重启trojan
-  start         启动trojan
-  status        查看trojan状态
-  stop          停止trojan
-  tls           证书安装
-  update        更新trojan
-  updateWeb     更新trojan管理程序
-  version       显示版本号
-  import [path] 导入sql文件
-  export [path] 导出sql文件
-  web           以web方式启动
-
-Flags:
-  -h, --help   help for trojan
+```bash
+curl -4 -fsSL --retry 3 https://raw.githubusercontent.com/drunksoul2021/trojan/master/install.sh -o /tmp/trojan-install.sh && bash /tmp/trojan-install.sh
 ```
 
-## 注意
-安装完trojan后强烈建议开启BBR等加速: [one_click_script](https://github.com/jinwyp/one_click_script)  
+按照提示输入域名和至少 12 位管理员密码。脚本自动完成：
 
-## Thanks
-感谢JetBrains提供的免费GoLand  
-[![avatar](asset/jetbrains.svg)](https://jb.gg/OpenSource)
+- 备份并修复 Debian APT 主源、更新源、安全源和 Signed-By 配置，保留第三方源。
+- APT 和安装下载使用 IPv4；保留系统 DNS 配置。
+- 使用 `apt-get install -y docker.io` 安装 Docker，设置开机启动。
+- 新装数据库使用官方 `mariadb:11.4` 镜像，端口仅绑定 `127.0.0.1:3307`。
+- 安装本仓库构建的管理程序及内核，管理网页随程序打包，不下载外部前端。
+- 使用 443 端口申请证书，安装到固定目录，每天自动检查续期 4 次。
+- 配置服务、开机启动及防火墙，检查数据库、管理网页和 TLS，全部通过才提示成功。
+
+后台地址：`https://你的域名`，管理员用户名：`admin`。首个客户端账号信息保存在服务器的 `/root/trojan-access.txt`，仅 root 可读。
+
+**证书申请要求域名解析正确、443 端口能从公网访问。** 软件无法替代云厂商控制台的安全组设置。
+
+## 更新
+
+在已经安装的服务器上再次执行同一条一键命令。脚本保留现有数据库连接、用户和管理员密码，不会把旧数据库数据目录升级到新镜像。更新前备份程序、配置和证书；服务验证失败时恢复旧版本。
+
+指定版本：
+
+```bash
+bash /tmp/trojan-install.sh --version v2026.10.02.000000 --update --yes
+```
+
+无人值守首次安装需提前设置 `TROJAN_ADMIN_PASSWORD`，并提供 `--domain`。不要把真实密码写入公共脚本或 GitHub 仓库。
+
+可选 `--email 联系邮箱`。默认采用 TLS-ALPN / 443 验证；使用 `--http` 可改为 HTTP / 80 验证，此时公网还需放行 80/TCP。自有可信证书可使用 `--cert-file` 和 `--key-file`；自定义证书由使用者负责续期。
+
+APT 源备份在 `/var/backups/trojan-apt-*`，程序备份在 `/var/backups/trojan-install-*`。服务日志：`journalctl -u trojan -n 100 --no-pager`；续期日志：`/var/log/trojan-cert-renew.log`。
+
+## 构建与发布
+
+GitHub Actions 使用 Debian 13 x64 构建环境，执行测试后生成完整安装包及 SHA256 校验文件。`master` 分支每次更新并通过构建后，自动在本仓库发布新版本；安装入口下载最新发布版本。
+
+也可以在 Debian 13 x64 构建环境执行：
+
+```bash
+docker build -f scripts/build-env.Dockerfile -t trojan-build .
+docker run --rm -v "$PWD:/src" trojan-build bash scripts/build-debian.sh dev
+```
+
+源代码的 GPL 许可证与版权声明保留，第三方来源及固定版本见 `THIRD_PARTY_NOTICES`。

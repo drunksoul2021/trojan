@@ -1,15 +1,17 @@
 [Unit]
-Description=trojan-web
-Documentation=https://github.com/Jrohy/trojan
-After=network.target network-online.target nss-lookup.target mysql.service mariadb.service mysqld.service docker.service
+Description=Trojan management
+Documentation=https://github.com/drunksoul2021/trojan
+After=network-online.target docker.service
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
 
 [Service]
 Type=simple
-StandardError=journal
-ExecStart=/usr/local/bin/trojan web
-ExecReload=/bin/kill -HUP $MAINPID
+ExecStart=/usr/local/bin/trojan web --host 127.0.0.1 --port 80
 Restart=on-failure
-RestartSec=3s
+RestartSec=5
+UMask=0077
 
 [Install]
 WantedBy=multi-user.target

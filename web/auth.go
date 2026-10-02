@@ -1,9 +1,12 @@
 package web
 
 import (
+	"crypto/sha256"
+	"crypto/subtle"
 	"fmt"
 	"github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
+	"sync"
 	"time"
 	"trojan/core"
 	"trojan/util"
@@ -78,7 +81,7 @@ func jwtInit(timeout int) {
 					return nil, err
 				}
 			}
-			if password == pass {
+			if passwordMatches(pass, password) {
 				return &loginVals, nil
 			}
 			return nil, jwt.ErrFailedAuthentication
@@ -105,11 +108,29 @@ func jwtInit(timeout int) {
 	}
 }
 
+var registrationLock sync.Mutex
+
+func passwordMatches(pass, stored string) bool {
+	hash := sha256.Sum224([]byte(pass))
+	encoded := fmt.Sprintf("%x", hash)
+	return subtle.ConstantTimeCompare([]byte(encoded), []byte(stored)) == 1 || subtle.ConstantTimeCompare([]byte(pass), []byte(stored)) == 1
+}
+
 func updateUser(c *gin.Context) {
 	responseBody := controller.ResponseBody{Msg: "success"}
 	defer controller.TimeCost(time.Now(), &responseBody)
-	username := c.DefaultPostForm("username", "admin")
+	username := "admin"
+	if c.FullPath() != "/auth/register" && RequestUsername(c) != "admin" {
+		c.AbortWithStatus(403)
+		return
+	}
 	pass := c.PostForm("password")
+	if len(pass) < 12 {
+		c.JSON(400, gin.H{"message": "密码至少 12 位"})
+		return
+	}
+	hash := sha256.Sum224([]byte(pass))
+	pass = fmt.Sprintf("%x", hash)
 	err := core.SetValue(fmt.Sprintf("%s_pass", username), pass)
 	if err != nil {
 		responseBody.Msg = err.Error()
@@ -152,7 +173,15 @@ func Auth(r *gin.Engine, timeout int) *jwt.GinJWTMiddleware {
 		}
 	})
 	r.POST("/auth/login", authMiddleware.LoginHandler)
-	r.POST("/auth/register", updateUser)
+	r.POST("/auth/register", func(c *gin.Context) {
+		registrationLock.Lock()
+		defer registrationLock.Unlock()
+		if pass, _ := core.GetValue("admin_pass"); pass != "" {
+			c.JSON(403, gin.H{"message": "管理员已初始化，请登录后修改密码"})
+			return
+		}
+		updateUser(c)
+	})
 	authO := r.Group("/auth")
 	authO.Use(authMiddleware.MiddlewareFunc())
 	{

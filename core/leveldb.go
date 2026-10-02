@@ -2,9 +2,17 @@ package core
 
 import (
 	"github.com/syndtr/goleveldb/leveldb"
+	"os"
 )
 
-var dbPath = "/var/lib/trojan-manager"
+var dbPath = dataLocation()
+
+func dataLocation() string {
+	if p := os.Getenv("TROJAN_DATA_DIR"); p != "" {
+		return p
+	}
+	return "/var/lib/trojan-manager"
+}
 
 // GetValue 获取leveldb值
 func GetValue(key string) (string, error) {
