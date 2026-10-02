@@ -34,8 +34,10 @@ systemctl start docker
 systemctl enable docker
 
 # 方法3：如果是 Ubuntu/Debian
+<img width="1622" height="1016" alt="image" src="https://github.com/user-attachments/assets/6bd35278-e5c6-4bb5-a15f-e4223386c7ba" />
+
 设置为ipv4
-echo "nameserver 8.8.8.8" > /etc/resolv.conf
+echo "nameserver 8.8.8.8" > /etc/resolv.conf && \
 echo "nameserver 1.1.1.1" >> /etc/resolv.conf
 
 sudo apt-get update -qq && \
