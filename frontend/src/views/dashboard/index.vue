@@ -148,6 +148,7 @@ export default {
     data() {
         return {
             timer: null,
+            disposed: false,
             trojanVersion: '',
             trojanUptime: '',
             keyOffset: 0,
@@ -192,6 +193,7 @@ export default {
         }
     },
     unmounted() {
+        this.disposed = true
         this.$store.commit('SET_NPROGRESS', true)
         clearInterval(this.timer)
     },
@@ -213,6 +215,7 @@ export default {
         },
         getServerInfo() {
             serverInfo().then((res) => {
+                if (this.disposed) return
                 const data = res.Data
                 this.cpu.percentage = parseFloat(data.cpu[0].toFixed(2))
                 this.cpu.color = this.computeColor(this.cpu.percentage)
@@ -245,6 +248,7 @@ export default {
         },
         async getUserList() {
             const result = await userList()
+            if (this.disposed) return
             if (result.Msg === 'success') {
                 const data = result.Data
                 this.userList = data.userList
@@ -262,6 +266,7 @@ export default {
         },
         async getVersion() {
             const result = await version()
+            if (this.disposed) return
             const data = result.Data
             this.trojanVersion = data.trojanVersion
             this.trojanUptime = this.parseUptime(data.trojanUptime)
