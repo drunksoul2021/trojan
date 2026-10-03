@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	ws "github.com/gorilla/websocket"
 	"io"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -44,7 +45,12 @@ func Restart() *ResponseBody {
 func Update() *ResponseBody {
 	responseBody := ResponseBody{Msg: "success"}
 	defer TimeCost(time.Now(), &responseBody)
-	trojan.InstallTrojan("")
+	command := exec.Command("systemd-run", "--unit=trojan-manager-update", "--collect", "--property=Type=exec", "bash", "/usr/local/lib/trojan-manager/scripts/update.sh")
+	if output, err := command.CombinedOutput(); err != nil {
+		responseBody.Msg = fmt.Sprintf("无法启动更新任务: %s (%v)", strings.TrimSpace(string(output)), err)
+		return &responseBody
+	}
+	responseBody.Data = map[string]string{"message": "更新任务已启动，服务恢复后请刷新页面。"}
 	return &responseBody
 }
 

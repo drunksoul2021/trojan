@@ -193,8 +193,9 @@ func Auth(r *gin.Engine, timeout int) *jwt.GinJWTMiddleware {
 				c.JSON(200, gin.H{
 					"code":    200,
 					"message": "success",
-					"data": map[string]string{
+					"data": gin.H{
 						"username": RequestUsername(c),
+						"isAdmin":  RequestUsername(c) == core.AdminUsername(),
 					},
 				})
 			}

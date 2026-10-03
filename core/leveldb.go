@@ -3,9 +3,13 @@ package core
 import (
 	"github.com/syndtr/goleveldb/leveldb"
 	"os"
+	"sync"
 )
 
 var dbPath = dataLocation()
+
+// Each operation opens the database; serialize access to its file lock.
+var leveldbLock sync.Mutex
 
 func dataLocation() string {
 	if p := os.Getenv("TROJAN_DATA_DIR"); p != "" {
@@ -16,6 +20,8 @@ func dataLocation() string {
 
 // GetValue 获取leveldb值
 func GetValue(key string) (string, error) {
+	leveldbLock.Lock()
+	defer leveldbLock.Unlock()
 	db, err := leveldb.OpenFile(dbPath, nil)
 	if err != nil {
 		return "", err
@@ -30,6 +36,8 @@ func GetValue(key string) (string, error) {
 
 // SetValue 设置leveldb值
 func SetValue(key string, value string) error {
+	leveldbLock.Lock()
+	defer leveldbLock.Unlock()
 	db, err := leveldb.OpenFile(dbPath, nil)
 	if err != nil {
 		return err
@@ -40,6 +48,8 @@ func SetValue(key string, value string) error {
 
 // DelValue 删除值
 func DelValue(key string) error {
+	leveldbLock.Lock()
+	defer leveldbLock.Unlock()
 	db, err := leveldb.OpenFile(dbPath, nil)
 	if err != nil {
 		return err

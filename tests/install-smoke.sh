@@ -19,6 +19,9 @@ install_test test-admin-password-123
 docker exec "$name" python3 /opt/test_running_api.py
 install_test different-password-456
 docker exec "$name" python3 /opt/test_running_api.py
+docker build -f scripts/test-browser.Dockerfile -t trojan-management-ui-test .
+docker run --rm --network "container:$name" -v "$PWD:/src:ro" trojan-management-ui-test node /src/tests/test_management_ui.mjs
+docker exec "$name" python3 /opt/test_running_api.py
 # Force a service failure after files were replaced, then verify rollback.
 docker exec "$name" bash -c 'printf "#!/bin/bash\n[[ \"\$1\" == -v ]] && exit 0\nexit 1\n" > /opt/bundle/trojan-core; chmod 755 /opt/bundle/trojan-core'
 if install_test different-password-456; then echo "Failed kernel was accepted" >&2; exit 1; fi
