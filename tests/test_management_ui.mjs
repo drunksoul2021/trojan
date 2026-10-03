@@ -22,6 +22,10 @@ async function login(target, user, pass) {
   await target.getByRole('button', {name: '登录', exact: true}).click();
   await target.waitForURL('**/#/dashboard');
 }
+await page.route('**/common/version', async route => {
+  await new Promise(resolve => setTimeout(resolve, 600));
+  await route.continue();
+});
 let adminToken;
 try {
   await login(page, username, password);
@@ -43,8 +47,15 @@ try {
   assert.equal((await (await created).json()).Msg, 'success');
   const row = page.getByRole('row').filter({hasText:temporaryUser});
   await row.waitFor({state:'visible'});
+  for (const label of ['trojan链接', 'clash链接']) {
+    await row.getByRole('button', {name:'分享', exact:true}).hover();
+    await page.getByRole('menuitem', {name:label, exact:true}).click();
+    await page.locator('.el-dialog:visible canvas').waitFor({state:'visible'});
+    await page.locator('.el-dialog:visible .el-dialog__headerbtn').click();
+  }
   const ordinary = await browser.newContext({locale:'zh-CN'});
   const ordinaryPage = await ordinary.newPage();
+  ordinaryPage.on('pageerror', error => errors.push(error.message));
   await login(ordinaryPage, temporaryUser, temporaryPass);
   await ordinaryPage.goto(base + '/#/user');
   await ordinaryPage.getByRole('row').filter({hasText:temporaryUser}).waitFor({state:'visible'});
@@ -58,7 +69,7 @@ try {
   await row.waitFor({state:'hidden'});
   assert.deepEqual(errors, [], 'Management page has JavaScript errors');
   assert.deepEqual(external, [], 'Management page depends on external resources');
-  console.log('MANAGEMENT_UI_OK: custom administrator, add user, ordinary-user controls, delete user, local assets');
+  console.log('MANAGEMENT_UI_OK: custom administrator, add user, ordinary-user controls, delete user, share QR codes, local assets');
 } finally {
   if (adminToken) {
     const headers = {'Authorization': 'Bearer ' + adminToken};

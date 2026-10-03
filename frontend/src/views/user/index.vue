@@ -176,7 +176,7 @@ import { setQuota, cleanData } from '@/api/data'
 import { setDomain, restart } from '@/api/trojan'
 import { readablizeBytes, isValidIP, base64Encode, base64Decode } from '@/utils/common'
 import { mapState } from 'vuex'
-import * as QRCode from 'easyqrcodejs'   
+import QRCode from 'easyqrcodejs'   
 import dayjs from 'dayjs'
 
 export default {
