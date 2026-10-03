@@ -1,3 +1,5 @@
 Management backend derived from Jrohy/trojan, GPL-3.0. Original copyright and GPL license are retained. Installation, build and updates use only drunksoul2021/trojan.
 Trojan core 1.16.0 (8606b7110fe79f8ab02d60c897f87ffb0a9b23f0), trojan-gfw/trojan, GPL-3.0, vendored in third_party/trojan-core.
 ACME client 3.1.6 (807da6498377ee5e0cf43a78091f46f12dc59a89), acmesh-official/acme.sh, GPL-3.0, vendored in third_party/acme.sh. DNS-provider plugins are not needed for supported standalone/ALPN validation.
+
+Management interface source imported into frontend/ from the original management interface project, Jrohy/trojan-web, revision b42847e61f92d4fcafa63e450069bd0f2009f9b4. Original authorship and source references are preserved. The frontend is built from the copy in this repository; installation and runtime do not fetch that project's releases or use CDN JavaScript.

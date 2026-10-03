@@ -2,7 +2,8 @@
 set -Eeuo pipefail
 cd "$(dirname "$0")/.."
 version=${1:-dev}
-mkdir -p dist/bundle
+mkdir -p dist/bundle web/templates
+cp -a /opt/trojan-management-ui/. web/templates/
 GOMAXPROCS=1 CGO_ENABLED=0 go test -buildvcs=false -trimpath -p 1 -tags nomsgpack ./...
 GOMAXPROCS=1 CGO_ENABLED=0 go build -buildvcs=false -p 1 -trimpath -tags nomsgpack -ldflags "-s -w -X trojan/trojan.MVersion=$version -X trojan/trojan.GitVersion=$(git -c safe.directory="$PWD" rev-parse HEAD)" -o dist/bundle/manager .
 cmake -S third_party/trojan-core -B dist/core -DCMAKE_BUILD_TYPE=Release -DENABLE_MYSQL=ON -DSYSTEMD_SERVICE=OFF

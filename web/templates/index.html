@@ -1,9 +1,0 @@
-<!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Trojan 管理平台</title><link rel="stylesheet" href="/static/app.css"></head>
-<body><header><strong>Trojan 管理平台</strong><span id="identity"></span><button id="logout" hidden>退出登录</button></header>
-<main><p id="notice" role="status"></p>
-<section id="login"><h1>登录管理后台</h1><p>使用安装时设置的账号密码。</p><form id="loginForm"><label>用户名<input name="username" autocomplete="username" value="admin" required></label><label>密码<input name="password" type="password" autocomplete="current-password" required></label><button type="submit">登录</button></form></section>
-<div id="dashboard" hidden><section><div class="bar"><h1>用户管理</h1><button id="refresh">刷新</button></div><p id="server"></p><div class="admin-actions" id="adminActions"><button id="add">新增用户</button><button id="export">导出 CSV</button><button id="import">导入 CSV</button><input id="importFile" type="file" accept=".csv" hidden><button id="restart">重启服务</button><button id="logs">查看日志</button><button id="resetPassword">修改管理密码</button></div>
-<div class="table-wrap"><table><thead><tr><th>用户</th><th>已用流量</th><th>流量限额</th><th>到期日期</th><th>操作</th></tr></thead><tbody id="users"></tbody></table></div></section><section id="logPanel" hidden><div class="bar"><h2>服务日志</h2><button id="closeLogs">关闭</button></div><pre id="logText"></pre></section></div>
-<dialog id="userDialog"><form id="userForm"><h2 id="formTitle">新增用户</h2><input name="id" type="hidden"><label>用户名<input name="username" required maxlength="64"></label><label>客户端密码<input name="password" required autocomplete="off"></label><div class="bar"><button type="button" id="cancelUser">取消</button><button type="submit">保存</button></div></form></dialog>
-</main><footer>由 drunksoul2021/trojan 独立构建与发布</footer><script src="/static/app.js"></script></body></html>

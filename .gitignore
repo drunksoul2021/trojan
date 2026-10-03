@@ -3,3 +3,6 @@
 dist/
 __pycache__/
 *.pyc
+
+frontend/node_modules/
+web/templates/

@@ -135,7 +135,9 @@ func DelUser(id uint) *ResponseBody {
 	if err := mysql.DeleteUser(id); err != nil {
 		responseBody.Msg = err.Error()
 	} else {
-		trojan.Restart()
+		// The core also forwards HTTPS panel traffic. Return the deletion result
+		// before restarting it, otherwise its TLS connection is interrupted.
+		time.AfterFunc(2*time.Second, trojan.Restart)
 	}
 	return &responseBody
 }
